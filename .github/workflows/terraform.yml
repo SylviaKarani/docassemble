@@ -33,15 +33,33 @@ jobs:
 
     - name: Install Docker and Pull Docassemble Image
       run: |
-        # Install Docker on the Lightsail instance
-        sudo apt update
-        sudo apt install -y docker.io
+        # SSH into the Lightsail instance and install Docker
+        echo "Installing Docker on Lightsail instance"
+        ssh -o StrictHostKeyChecking=no -i ${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }} ubuntu@${{ secrets.LIGHTSAIL_PUBLIC_IP }} << 'EOF'
+          # Update the package list and install necessary dependencies
+          sudo apt-get update
+          sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
 
-        # Pull the Docassemble image (only if it isn't already pulled)
-        sudo docker pull sylvia98/docassemble:latest
+          # Add Docker’s official GPG key and repository
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/docker-archive-keyring.gpg
+          echo "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-        # Run the Docassemble container if not running
-        sudo docker run -d -p 80:80 --name docassemble sylvia98/docassemble:latest
+          # Install Docker
+          sudo apt-get update
+          sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+
+          # Start Docker service
+          sudo systemctl start docker
+          sudo systemctl enable docker
+
+          # Pull the Docassemble image (only if not already pulled)
+          sudo docker pull sylvia98/docassemble:latest
+
+          # Run the Docassemble container if it's not already running
+          if ! sudo docker ps -q -f name=docassemble; then
+            sudo docker run -d -p 80:80 --name docassemble sylvia98/docassemble:latest
+          fi
+        EOF
 
     - name: Deploy Docassemble
       run: |
@@ -60,11 +78,11 @@ jobs:
             git pull origin main
           fi
 
-          # If docassemble container is running, restart it
+          # Restart Docassemble container if it's running
           if sudo docker ps -q -f name=docassemble; then
             sudo docker restart docassemble
           else
-            # If docassemble container is not running, start it
+            # If the Docassemble container is not running, start it
             sudo docker run -d -p 80:80 --name docassemble sylvia98/docassemble:latest
           fi
         EOF
