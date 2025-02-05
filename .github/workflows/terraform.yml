@@ -33,42 +33,24 @@ jobs:
 
     - name: Install Docker and Pull Docassemble Image
       run: |
-        # SSH into the Lightsail instance and install Docker
-        echo "Installing Docker on Lightsail instance"
-        ssh -o StrictHostKeyChecking=no -i ${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }} ubuntu@${{ secrets.LIGHTSAIL_PUBLIC_IP }} << 'EOF'
-          # Update the package list and install necessary dependencies
-          sudo apt-get update
-          sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+        # Install Docker on the Lightsail instance
+        sudo apt update
+        sudo apt install -y docker.io
 
-          # Add Docker’s official GPG key and repository
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/docker-archive-keyring.gpg
-          echo "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+        # Pull the Docassemble image (only if it isn't already pulled)
+        sudo docker pull sylvia98/docassemble:latest
 
-          # Install Docker
-          sudo apt-get update
-          sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+        # Run the Docassemble container if not running
+        sudo docker run -d -p 80:80 --name docassemble sylvia98/docassemble:latest
 
-          # Start Docker service
-          sudo systemctl start docker
-          sudo systemctl enable docker
-
-          # Pull the Docassemble image (only if not already pulled)
-          sudo docker pull sylvia98/docassemble:latest
-
-          # Run the Docassemble container if it's not already running
-          if ! sudo docker ps -q -f name=docassemble; then
-            sudo docker run -d -p 80:80 --name docassemble sylvia98/docassemble:latest
-          fi
-        EOF
+    - name: Add SSH private key to agent
+      run: |
+        echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}" | ssh-add -
 
     - name: Deploy Docassemble
       run: |
-        # Save the SSH private key to a file
-        echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}" > /tmp/lightsail_key.pem
-        chmod 600 /tmp/lightsail_key.pem
-
         # SSH into Lightsail instance and deploy code
-        ssh -o StrictHostKeyChecking=no -i /tmp/lightsail_key.pem ubuntu@${{ secrets.LIGHTSAIL_PUBLIC_IP }} << 'EOF'
+        ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.LIGHTSAIL_PUBLIC_IP }} << 'EOF'
           # If the directory doesn't exist, clone the repository from GitHub
           if [ ! -d "/home/ubuntu/docassemble" ]; then
             git clone https://github.com/SylviaKarani/docassemble.git /home/ubuntu/docassemble
@@ -78,11 +60,11 @@ jobs:
             git pull origin main
           fi
 
-          # Restart Docassemble container if it's running
+          # If docassemble container is running, restart it
           if sudo docker ps -q -f name=docassemble; then
             sudo docker restart docassemble
           else
-            # If the Docassemble container is not running, start it
+            # If docassemble container is not running, start it
             sudo docker run -d -p 80:80 --name docassemble sylvia98/docassemble:latest
           fi
         EOF
