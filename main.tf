@@ -3,7 +3,7 @@ provider "aws" {
 }
 
 resource "aws_lightsail_instance" "docassemble-terraform"{
-    name                = "docassemble-terraform",
+    name                = "docassemble-terraform"
     availability_zone   = "eu-central-1a"
     blueprint_id        = "ubuntu_22_04"
     bundle_id           = "nano_2_0"
