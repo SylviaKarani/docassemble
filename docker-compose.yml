@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  docassemble:
+    build:
+      context: .
+    image: sylvia98/docassemble:latest
+    container_name: docassemble
+    environment:
+      - POSTGRES_USER=docassemble
+      - POSTGRES_PASSWORD=yourpassword
+      - REDIS_PASSWORD=yourpassword
+      - DA_ADMIN_EMAIL=admin@example.com
+      - DA_SECRET_KEY=yoursecretkey
+      - DA_ADMIN_PASSWORD=testaccount
+    ports:
+      - "80:80"  # Map port 80 on your machine to port 80 in the container
+    volumes:
+      - docassemble_data:/usr/share/docassemble/files  # Persistent storage
+      - /etc/localtime:/etc/localtime:ro              # Sync time zone
+
+  postgres:
+    image: postgres
+    container_name: docassemble-postgres
+    environment:
+      - POSTGRES_USER=docassemble
+      - POSTGRES_PASSWORD=yourpassword
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis
+    container_name: docassemble-redis
+    command: redis-server --requirepass yourpassword
+    volumes:
+      - redis_data:/data
+
+volumes:
+  docassemble_data:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,49 @@
+name: Deploy Docassemble to AWS Lightsail
+
+on:
+  push:
+    branches:
+      - master  # Trigger the workflow when there's a push to the 'main' branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest  # Set the runner environment to Ubuntu (default GitHub runner)
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2  # Checkout the code from the repo to the GitHub Actions runner
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v1  # Set up Terraform to manage infrastructure
+      with:
+        terraform_version: 1.0.0  # Define the Terraform version
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1  # Set AWS credentials for Terraform
+      with:
+        aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws_region: eu-central-1  # Specify your AWS region
+
+    - name: Initialize Terraform
+      run: terraform init  # Initialize Terraform to set up the environment
+
+    - name: Apply Terraform Configuration
+      run: terraform apply -auto-approve  # Apply the infrastructure changes
+
+    - name: Deploy Docassemble
+      run: |
+        # SSH into Lightsail instance and deploy code
+        ssh -i ${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }} ubuntu@${{ secrets.LIGHTSAIL_PUBLIC_IP }} << 'EOF'
+          # If the directory doesn't exist, clone the repository from GitHub
+          if [ ! -d "/path/to/your/docassemble" ]; then
+            git clone https://github.com/SylviaKarani/docassemble.git /path/to/your/docassemble
+          else
+            # If the repo already exists, pull the latest changes
+            cd /path/to/your/docassemble
+            git pull origin main
+          fi
+
+          # Restart Docassemble service after code update
+          sudo systemctl restart docassemble
+        EOF
