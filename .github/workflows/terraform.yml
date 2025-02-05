@@ -33,9 +33,24 @@ jobs:
 
     - name: Install Docker and Pull Docassemble Image
       run: |
-        # Install Docker on the Lightsail instance
-        sudo apt update
-        sudo apt install -y docker.io
+        # Update package list and upgrade existing packages
+        sudo apt update -y
+        sudo apt upgrade -y
+
+        # Install required packages and dependencies for Docker
+        sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
+
+        # Add Docker’s official GPG key
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+
+        # Set up the Docker repository
+        sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+
+        # Update package list again after adding Docker's repo
+        sudo apt update -y
+
+        # Install Docker
+        sudo apt install -y docker-ce docker-ce-cli containerd.io
 
         # Pull the Docassemble image (only if it isn't already pulled)
         sudo docker pull sylvia98/docassemble:latest
