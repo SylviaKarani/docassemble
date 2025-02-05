@@ -11,5 +11,5 @@ resource "aws_lightsail_instance" "docassemble-terraform"{
 }
 
 output "instance_ip" {
-    value = aws_lightsail_instance.docassemble.public_ip_address
+    value = aws_lightsail_instance.docassemble-terraform.public_ip_address
 }
