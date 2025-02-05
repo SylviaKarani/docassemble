@@ -26,10 +26,10 @@ jobs:
         aws-region: 'eu-central-1'  # Define the AWS region
 
     - name: Initialize Terraform
-      run: terraform init  # Initialize Terraform to set up the environment
+      run: terraform init  
 
     - name: Apply Terraform Configuration
-      run: terraform apply -auto-approve  # Apply the infrastructure changes
+      run: terraform apply -auto-approve
 
     - name: Deploy Docassemble
       run: |
