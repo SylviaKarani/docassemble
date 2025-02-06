@@ -74,11 +74,15 @@ jobs:
         IP=$(terraform output -raw instance_ip | tr -d '\n')
         echo "LIGHTSAIL_IP=$IP" >> $GITHUB_ENV
         echo "Lightsail IP: $IP"  # Debugging line to confirm IP
+    - name: Test SSH connection to Lightsail
+      run: |
+        ssh -o StrictHostKeyChecking=no -i ${{secrets.LIGHTSAIL_SSH_PRIVATE_KEY}} ubuntu@${{ env.LIGHTSAIL_IP }} "echo Connected!"
+
 
     - name: Deploy Docassemble
       run: |
         # SSH into Lightsail instance and deploy code
-        ssh -o StrictHostKeyChecking=no ubuntu@${{env.LIGHTSAIL_IP}} << 'EOF'
+        ssh -vvv -o StrictHostKeyChecking=no ubuntu@${{env.LIGHTSAIL_IP}} << 'EOF'
           # If the directory doesn't exist, clone the repository from GitHub
           if [ ! -d "/home/ubuntu/docassemble" ]; then
             git clone https://github.com/SylviaKarani/docassemble.git /home/ubuntu/docassemble
