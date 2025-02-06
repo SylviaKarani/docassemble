@@ -6,11 +6,15 @@ variable "instance_name" {
   description = "Name for the instance"
   default     = "docassemble-instance"
 }
-
 variable "lightsail_key" {
-    description = "Lightsail key pair"
-    default     = "lightsail_key"
+  description = "Lightsail key pair"
+  default     = "lightsail_key-${random_id.instance_id.hex}"
 }
+
+resource "random_id" "instance_id" {
+  byte_length = 4
+}
+
 
 resource "aws_lightsail_key_pair" "keypair" {
   name       = var.lightsail_key

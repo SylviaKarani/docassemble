@@ -33,7 +33,8 @@ jobs:
 
     - name: Apply Terraform Configuration
       run: |
-        terraform apply -var "instance_name=${{ github.sha }}" -auto-approve
+        terraform apply -var "instance_name=${{ github.sha }}" -var "lightsail_key=lightsail_key-${RANDOM_ID}" -auto-approve
+
 
     - name: Install Docker and Pull Docassemble Image
       run: |
