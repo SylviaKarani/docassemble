@@ -9,7 +9,7 @@ variable "instance_name" {
 
 resource "aws_lightsail_key_pair" "keypair" {
   name       = "lightsail_key"
-  public_key = file("/home/jinks/lightsail_key.pub")
+  public_key = file("lightsail_key.pub")
 }
 
 resource "aws_lightsail_instance" "docassemble" {

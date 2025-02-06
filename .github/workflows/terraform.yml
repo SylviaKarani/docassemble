@@ -18,6 +18,9 @@ jobs:
       with:
         terraform_version: 1.0.0  # Define the Terraform version
 
+    - name: Set up SSH public key
+      run: echo "${{ secrets.LIGHTSAIL_PUBLIC_KEY }}" > lightsail_key.pub
+
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v1  # Set AWS credentials for Terraform
       with:
