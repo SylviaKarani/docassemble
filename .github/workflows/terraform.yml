@@ -77,7 +77,7 @@ jobs:
     - name: Deploy Docassemble
       run: |
         # SSH into Lightsail instance and deploy code
-        ssh -o StrictHostKeyChecking=no ubuntu@$LIGHTSAIL_IP << 'EOF'
+        ssh -o StrictHostKeyChecking=no ubuntu@${{env.LIGHTSAIL_IP}} << 'EOF'
           # If the directory doesn't exist, clone the repository from GitHub
           if [ ! -d "/home/ubuntu/docassemble" ]; then
             git clone https://github.com/SylviaKarani/docassemble.git /home/ubuntu/docassemble
