@@ -8,7 +8,7 @@ variable "instance_name" {
 }
 
 resource "aws_lightsail_key_pair" "key-pair" {
-  name       = light_sail_key
+  name       = "light_sail_key"
   public_key = file("lightsail_key.pub")
 }
 
