@@ -73,6 +73,7 @@ jobs:
       run: |
         IP=$(terraform output -raw instance_ip | tr -d '\n')
         echo "LIGHTSAIL_IP=$IP" >> $GITHUB_ENV
+        echo "Lightsail IP: $IP"  # Debugging line to confirm IP
 
     - name: Deploy Docassemble
       run: |
