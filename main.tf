@@ -12,7 +12,7 @@ resource "aws_lightsail_key_pair" "key-pair" {
   public_key = file("lightsail_key.pub")
 }
 
-resource "aws_lightsail_instance" "docassemble-setup" {
+resource "aws_lightsail_instance" "docassemble-set-up" {
   name              = var.instance_name
   availability_zone = "eu-central-1a"
   blueprint_id      = "ubuntu_22_04"
@@ -25,5 +25,5 @@ resource "aws_lightsail_instance" "docassemble-setup" {
 }
 
 output "instance_ip" {
-  value = aws_lightsail_instance.docassemble-set.public_ip_address
+  value = aws_lightsail_instance.docassemble-set-up.public_ip_address
 }
