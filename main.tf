@@ -6,13 +6,9 @@ variable "instance_name" {
   description = "Name for the instance"
   default     = "docassemble-instance"
 }
-variable "lightsail_key" {
-  description = "Lightsail key pair"
-  default     = "lightsail_key
-}
 
 resource "aws_lightsail_key_pair" "key-pair" {
-  name       = var.lightsail_key
+  name       = light_sail_key
   public_key = file("lightsail_key.pub")
 }
 
@@ -21,7 +17,7 @@ resource "aws_lightsail_instance" "docassemble-setup" {
   availability_zone = "eu-central-1a"
   blueprint_id      = "ubuntu_22_04"
   bundle_id         = "nano_2_0"
-  key_pair_name     = aws_lightsail_key_pair.keypair.name
+  key_pair_name     = aws_lightsail_key_pair.key-pair.name
 
   tags = {
     Name = var.instance_name
@@ -29,5 +25,5 @@ resource "aws_lightsail_instance" "docassemble-setup" {
 }
 
 output "instance_ip" {
-  value = aws_lightsail_instance.docassemble-setup.public_ip_address
+  value = aws_lightsail_instance.docassemble-set.public_ip_address
 }
