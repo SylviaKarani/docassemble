@@ -7,8 +7,13 @@ variable "instance_name" {
   default     = "docassemble-instance"
 }
 
+variable "lightsail_key" {
+    description = "Lightsail key pair"
+    default     = "lightsail_key"
+}
+
 resource "aws_lightsail_key_pair" "keypair" {
-  name       = "lightsail_key"
+  name       = var.lightsail_key
   public_key = file("lightsail_key.pub")
 }
 
