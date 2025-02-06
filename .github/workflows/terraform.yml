@@ -3,7 +3,7 @@ name: Deploy Docassemble to AWS Lightsail
 on:
   push:
     branches:
-      - master  # Trigger the workflow when there's a push to the 'main' branch
+      - master  # Trigger the workflow when there's a push to the master branch
 
 jobs:
   deploy:
@@ -29,7 +29,8 @@ jobs:
       run: terraform init
 
     - name: Apply Terraform Configuration
-      run: terraform apply -auto-approve
+      run: |
+        terraform apply -var "instance_name=${{ github.sha }}" -auto-approve
 
     - name: Install Docker and Pull Docassemble Image
       run: |
@@ -60,14 +61,14 @@ jobs:
 
     - name: Add SSH private key to agent
       run: |
-        eval $(ssh-agent -s)
-        echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}" | ssh-add -
-        ssh-add -l
+        # eval $(ssh-agent -s)
+        # echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}" | ssh-add -
+        # ssh-add -l
 
     - name: Deploy Docassemble
       run: |
         # SSH into Lightsail instance and deploy code
-        ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.LIGHTSAIL_PUBLIC_IP }} << 'EOF'
+        ssh -o StrictHostKeyChecking=no ubuntu@$(terraform output -raw instance_ip) << 'EOF'
           # If the directory doesn't exist, clone the repository from GitHub
           if [ ! -d "/home/ubuntu/docassemble" ]; then
             git clone https://github.com/SylviaKarani/docassemble.git /home/ubuntu/docassemble
