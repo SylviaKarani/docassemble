@@ -43,16 +43,16 @@ jobs:
     - name: Get Lightsail Instance Details
       id: instance-details
       run: |
-        # Capture terraform output and print to debug
-        INSTANCE_IP=$(terraform output -raw instance_ip)
+        # Capture terraform output and ensure it's clean of any debug information
+        INSTANCE_IP=$(terraform output -raw instance_ip | sed 's/::debug::.*//')
         echo "DEBUG: Retrieved instance IP: $INSTANCE_IP"
         echo "INSTANCE_IP=$INSTANCE_IP" >> $GITHUB_ENV
 
-        INSTANCE_NAME=$(terraform output -raw instance_name)
+        INSTANCE_NAME=$(terraform output -raw instance_name | sed 's/::debug::.*//')
         echo "DEBUG: Retrieved instance name: $INSTANCE_NAME"
         echo "instance_name=$INSTANCE_NAME" >> $GITHUB_ENV
 
-        KEY_PAIR_NAME=$(terraform output -raw key_pair_name)
+        KEY_PAIR_NAME=$(terraform output -raw key_pair_name | sed 's/::debug::.*//')
         echo "DEBUG: Retrieved key pair name: $KEY_PAIR_NAME"
         echo "key_pair_name=$KEY_PAIR_NAME" >> $GITHUB_ENV
 
@@ -63,6 +63,16 @@ jobs:
         echo "Instance Name: $INSTANCE_NAME"
         echo "Key Pair Name: $KEY_PAIR_NAME"
         echo "----------------------------------------"
+
+    - name: Validate Instance Details
+      run: |
+        echo "Validating instance details..."
+        if [ -z "${{ env.INSTANCE_IP }}" ] || [ -z "${{ env.instance_name }}" ] || [ -z "${{ env.key_pair_name }}" ]; then
+          echo "Error: Missing Terraform output values!"
+          exit 1
+        else
+          echo "Instance details validated successfully!"
+        fi
 
     - name: Wait for Instance Boot
       run: |
