@@ -14,21 +14,21 @@ variable "instance_name" {
   default     = "docassemble-instance"
 }
 
-resource "aws_lightsail_key_pair" "docassemble_key" {
-  name       = local.unique_key_name
-  public_key = file("lightsail_key.pub")
+# resource "aws_lightsail_key_pair" "docassemble_key" {
+#   name       = local.unique_key_name
+#   public_key = file("lightsail_key.pub")
 
-  lifecycle {
-    create_before_destroy = true
-  }
-}
+#   lifecycle {
+#     create_before_destroy = true
+#   }
+# }
 
 resource "aws_lightsail_instance" "docassemble_instance" {
   name              = local.unique_instance_name
   availability_zone = "eu-central-1a"
   blueprint_id      = "ubuntu_22_04"
   bundle_id         = "nano_2_0"
-  key_pair_name     = aws_lightsail_key_pair.docassemble_key.name
+  key_pair_name     = "lightsail"
 
   tags = {
     Name      = local.unique_instance_name
@@ -49,6 +49,6 @@ output "instance_name" {
   value = aws_lightsail_instance.docassemble_instance.name
 }
 
-output "key_pair_name" {
-  value = aws_lightsail_key_pair.docassemble_key.name
-}
+# output "key_pair_name" {
+#   value = aws_lightsail_key_pair.docassemble_key.name
+# }
