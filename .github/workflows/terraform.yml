@@ -3,100 +3,90 @@ name: Deploy Docassemble to AWS Lightsail
 on:
   push:
     branches:
-      - master  # Trigger the workflow when there's a push to the master branch
+      - master
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest  # Set the runner environment to Ubuntu (default GitHub runner)
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2  # Checkout the code from the repo to the GitHub Actions runner
+      uses: actions/checkout@v2
 
     - name: Set up Terraform
-      uses: hashicorp/setup-terraform@v1  # Set up Terraform to manage infrastructure
+      uses: hashicorp/setup-terraform@v1
       with:
-        terraform_version: 1.0.0  # Define the Terraform version
+        terraform_version: 1.0.0
 
     - name: Set up SSH public key
       run: echo "${{ secrets.LIGHTSAIL_PUBLIC_KEY }}" | base64 --decode > lightsail_key.pub
 
     - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v1  # Set AWS credentials for Terraform
+      uses: aws-actions/configure-aws-credentials@v1
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: 'eu-central-1'  # Define the AWS region
+        aws-region: 'eu-central-1'
 
     - name: Initialize Terraform
       run: terraform init
 
     - name: Apply Terraform Configuration
+      run: terraform apply -auto-approve
+
+    - name: Setup SSH for Lightsail
       run: |
-        terraform apply -var "instance_name=${{ github.sha }}" -auto-approve
+        mkdir -p ~/.ssh
+        echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}" > ~/.ssh/lightsail.pem
+        chmod 600 ~/.ssh/lightsail.pem
 
-
-    - name: Install Docker and Pull Docassemble Image
+    - name: Get Lightsail Instance IP
+      id: get-ip
       run: |
-        # Update package list and upgrade existing packages
-        sudo apt update -y
-        sudo apt upgrade -y
-
-        # Install required packages and dependencies for Docker
-        sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
-
-        # Add Docker’s official GPG key
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-
-        # Set up the Docker repository
-        sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-
-        # Update package list again after adding Docker's repo
-        sudo apt update -y
-
-        # Install Docker
-        sudo apt install -y docker-ce docker-ce-cli containerd.io
-
-        # Pull the Docassemble image (only if it isn't already pulled)
-        sudo docker pull sylvia98/docassemble:latest
-
-        # Run the Docassemble container if not running
-        sudo docker run -d -p 80:80 --name docassemble sylvia98/docassemble:latest
-
-    - name: Add SSH private key to agent
-      run: |
-        eval $(ssh-agent -s)
-        echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}" | ssh-add -
-        ssh-add -l
-
-    - name: Get Lightsail IP
-      run: |
-        IP=$(terraform output -raw instance_ip | tr -d '\n')
+        IP=$(terraform output -raw instance_ip)
         echo "LIGHTSAIL_IP=$IP" >> $GITHUB_ENV
-        echo "Lightsail IP: $IP"  # Debugging line to confirm IP
-    - name: Test SSH connection to Lightsail
+        echo "Lightsail IP: $IP"
+
+    - name: Wait for Instance Boot
       run: |
-        ssh -o StrictHostKeyChecking=no -i ${{secrets.LIGHTSAIL_SSH_PRIVATE_KEY}} ubuntu@${{ env.LIGHTSAIL_IP }} "echo Connected!"
+        echo "Waiting for instance to complete boot process..."
+        sleep 60  # Wait for 60 seconds to ensure instance is ready
 
-
-    - name: Deploy Docassemble
+    - name: Test SSH Connection
       run: |
-        # SSH into Lightsail instance and deploy code
-        ssh -vvv -o StrictHostKeyChecking=no ubuntu@${{env.LIGHTSAIL_IP}} << 'EOF'
-          # If the directory doesn't exist, clone the repository from GitHub
-          if [ ! -d "/home/ubuntu/docassemble" ]; then
-            git clone https://github.com/SylviaKarani/docassemble.git /home/ubuntu/docassemble
-          else
-            # If the repo already exists, pull the latest changes
-            cd /home/ubuntu/docassemble
-            git pull origin main
-          fi
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/lightsail.pem ubuntu@${{ env.LIGHTSAIL_IP }} "echo Connected!"
 
-          # If docassemble container is running, restart it
-          if sudo docker ps -q -f name=docassemble; then
-            sudo docker restart docassemble
-          else
-            # If docassemble container is not running, start it
-            sudo docker run -d -p 80:80 --name docassemble sylvia98/docassemble:latest
-          fi
-        EOF
+    - name: Install Docker and Deploy Docassemble
+      run: |
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/lightsail.pem ubuntu@${{ env.LIGHTSAIL_IP }} '
+          # Update system packages
+          sudo apt update -y
+          sudo apt upgrade -y
+
+          # Install Docker dependencies
+          sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
+
+          # Add Docker GPG key and repository
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+
+          # Install Docker
+          sudo apt update -y
+          sudo apt install -y docker-ce docker-ce-cli containerd.io
+
+          # Pull Docassemble image
+          sudo docker pull sylvia98/docassemble:latest
+
+          # Stop and remove existing container if it exists
+          sudo docker stop docassemble 2>/dev/null || true
+          sudo docker rm docassemble 2>/dev/null || true
+
+          # Run new container
+          sudo docker run -d -p 80:80 --name docassemble sylvia98/docassemble:latest
+        '
+
+    - name: Print Instance Information
+      run: |
+        echo "Instance IP: $(terraform output -raw instance_ip)"
+        echo "Instance Name: $(terraform output -raw instance_name)"
+        echo "Key Pair Name: $(terraform output -raw key_pair_name)"
