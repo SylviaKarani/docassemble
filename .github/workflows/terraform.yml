@@ -46,12 +46,16 @@ jobs:
       run: |
         INSTANCE_IP=$(terraform output -raw instance_ip)
         echo "Instance IP: $INSTANCE_IP"
+        if [ -z "$INSTANCE_IP" ]; then
+          echo "Failed to retrieve instance IP"
+          exit 1
+        fi
 
     - name: Test SSH Connection
       run: |
           INSTANCE_IP=$(terraform output -raw instance_ip)
           echo "Testing connection to $INSTANCE_IP"
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/lightsail.pem -o ConnectTimeout=30 ubuntu@$INSTANCE_IP echo "Connection successful"
+          ssh -v -o StrictHostKeyChecking=no -i ~/.ssh/lightsail.pem -o ConnectTimeout=30 ubuntu@$INSTANCE_IP echo "Connection successful"
 
     - name: Install Docker and Deploy Docassemble
       run: |
