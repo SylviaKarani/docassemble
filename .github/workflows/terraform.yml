@@ -43,26 +43,41 @@ jobs:
     - name: Get Lightsail Instance Details
       id: instance-details
       run: |
-        # Extract IP address and clean it
-        RAW_OUTPUT=$(terraform output -raw instance_ip)
-        # Extract just the IP address using regex
-        if [[ $RAW_OUTPUT =~ ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+) ]]; then
+        # Function to clean terraform output
+        clean_output() {
+          echo "$1" | grep -oE '^[^:]+' || echo "$1"
+        }
+
+        # Extract and clean IP address
+        RAW_IP=$(terraform output -raw instance_ip)
+        if [[ $RAW_IP =~ ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+) ]]; then
           INSTANCE_IP="${BASH_REMATCH[1]}"
           echo "INSTANCE_IP=$INSTANCE_IP" >> $GITHUB_ENV
           echo "IP address extracted successfully: $INSTANCE_IP"
         else
-          echo "Error: Could not extract valid IP address from output: $RAW_OUTPUT"
+          echo "Error: Could not extract valid IP address from output: $RAW_IP"
           exit 1
         fi
 
-        # Extract other details
-        INSTANCE_NAME=$(terraform output -raw instance_name || echo "unknown")
-        KEY_PAIR_NAME=$(terraform output -raw key_pair_name || echo "unknown")
+        # Extract and clean instance name
+        RAW_NAME=$(terraform output -raw instance_name)
+        INSTANCE_NAME=$(clean_output "$RAW_NAME")
 
-        {
-          echo "instance_name=$INSTANCE_NAME"
-          echo "key_pair_name=$KEY_PAIR_NAME"
-        } >> "$GITHUB_OUTPUT"
+        # Extract and clean key pair name
+        RAW_KEY_NAME=$(terraform output -raw key_pair_name)
+        KEY_PAIR_NAME=$(clean_output "$RAW_KEY_NAME")
+
+        # Set outputs using the new GitHub Actions syntax
+        echo "instance_name=$INSTANCE_NAME" >> $GITHUB_OUTPUT
+        echo "key_pair_name=$KEY_PAIR_NAME" >> $GITHUB_OUTPUT
+
+        # Debug information
+        echo "----------------------------------------"
+        echo "Debug Information:"
+        echo "Instance IP: $INSTANCE_IP"
+        echo "Instance Name: $INSTANCE_NAME"
+        echo "Key Pair Name: $KEY_PAIR_NAME"
+        echo "----------------------------------------"
 
         # Log the details for debugging
         echo "Instance IP: $INSTANCE_IP"
