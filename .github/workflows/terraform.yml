@@ -43,17 +43,36 @@ jobs:
     - name: Get Lightsail Instance Details
       id: instance-details
       run: |
-        # Capture terraform output and ensure it's clean of any debug information
-        INSTANCE_IP=$(terraform output -raw instance_ip)
-        INSTANCE_NAME=$(terraform output -raw instance_name)
-        KEY_PAIR_NAME=$(terraform output -raw key_pair_name)
+        # Function to clean terraform output
+        clean_terraform_output() {
+          local raw_output="$1"
+          echo "$raw_output" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+|^docassemble[^:]*' || echo "$raw_output"
+        }
 
-        # Write the values to the environment
-        echo "INSTANCE_IP=${INSTANCE_IP}" >> $GITHUB_ENV
-        echo "INSTANCE_NAME=${INSTANCE_NAME}" >> $GITHUB_ENV
-        echo "KEY_PAIR_NAME=${KEY_PAIR_NAME}" >> $GITHUB_ENV
+        # Get and clean terraform outputs
+        raw_ip=$(terraform output -raw instance_ip)
+        raw_name=$(terraform output -raw instance_name)
+        raw_key=$(terraform output -raw key_pair_name)
 
-        # Add debug output
+        # Clean the outputs
+        INSTANCE_IP=$(clean_terraform_output "$raw_ip")
+        INSTANCE_NAME=$(clean_terraform_output "$raw_name")
+        KEY_PAIR_NAME=$(clean_terraform_output "$raw_key")
+
+        # Validate IP format
+        if [[ ! "$INSTANCE_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "Error: Invalid IP format: $INSTANCE_IP"
+          exit 1
+        fi
+
+        # Set environment variables
+        {
+          echo "INSTANCE_IP=$INSTANCE_IP"
+          echo "INSTANCE_NAME=$INSTANCE_NAME"
+          echo "KEY_PAIR_NAME=$KEY_PAIR_NAME"
+        } >> "$GITHUB_ENV"
+
+        # Debug output
         echo "----------------------------------------"
         echo "Debug Information:"
         echo "Instance IP: $INSTANCE_IP"
