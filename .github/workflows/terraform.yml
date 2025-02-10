@@ -44,17 +44,14 @@ jobs:
       id: instance-details
       run: |
         # Capture terraform output and ensure it's clean of any debug information
-        INSTANCE_IP=$(terraform output -raw instance_ip | sed 's/::debug::.*//')
-        echo "DEBUG: Retrieved instance IP: $INSTANCE_IP"
-        echo "INSTANCE_IP=$INSTANCE_IP" >> $GITHUB_ENV
+        INSTANCE_IP=$(terraform output -raw instance_ip)
+        INSTANCE_NAME=$(terraform output -raw instance_name)
+        KEY_PAIR_NAME=$(terraform output -raw key_pair_name)
 
-        INSTANCE_NAME=$(terraform output -raw instance_name | sed 's/::debug::.*//')
-        echo "DEBUG: Retrieved instance name: $INSTANCE_NAME"
-        echo "instance_name=$INSTANCE_NAME" >> $GITHUB_ENV
-
-        KEY_PAIR_NAME=$(terraform output -raw key_pair_name | sed 's/::debug::.*//')
-        echo "DEBUG: Retrieved key pair name: $KEY_PAIR_NAME"
-        echo "key_pair_name=$KEY_PAIR_NAME" >> $GITHUB_ENV
+        # Write the values to the environment
+        echo "INSTANCE_IP=${INSTANCE_IP}" >> $GITHUB_ENV
+        echo "INSTANCE_NAME=${INSTANCE_NAME}" >> $GITHUB_ENV
+        echo "KEY_PAIR_NAME=${KEY_PAIR_NAME}" >> $GITHUB_ENV
 
         # Add debug output
         echo "----------------------------------------"
@@ -67,32 +64,36 @@ jobs:
     - name: Validate Instance Details
       run: |
         echo "Validating instance details..."
-        if [ -z "${{ env.INSTANCE_IP }}" ] || [ -z "${{ env.instance_name }}" ] || [ -z "${{ env.key_pair_name }}" ]; then
-          echo "Error: Missing Terraform output values!"
+        if [[ -z "${{ env.INSTANCE_IP }}" || ! "${{ env.INSTANCE_IP }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "Error: Invalid or missing INSTANCE_IP!"
           exit 1
-        else
-          echo "Instance details validated successfully!"
         fi
+
+        if [[ -z "${{ env.INSTANCE_NAME }}" ]]; then
+          echo "Error: Missing INSTANCE_NAME!"
+          exit 1
+        fi
+
+        if [[ -z "${{ env.KEY_PAIR_NAME }}" ]]; then
+          echo "Error: Missing KEY_PAIR_NAME!"
+          exit 1
+        fi
+
+        echo "Instance details validated successfully!"
 
     - name: Wait for Instance Boot
       run: |
         echo "Waiting for instance to complete boot process..."
         echo "Target IP: ${{ env.INSTANCE_IP }}"
-        # Adding retries for SSH connection
-        RETRIES=5
-        for i in $(seq 1 $RETRIES); do
-          echo "Attempt $i of $RETRIES to connect..."
-          if ssh -o StrictHostKeyChecking=no -i ~/.ssh/lightsail.pem ubuntu@${{ env.INSTANCE_IP }} "echo Connected!"; then
-            echo "SSH connection successful!"
-            break
-          else
-            echo "SSH connection failed. Retrying..."
-            sleep 30  # Wait for 30 seconds before retrying
-          fi
-        done
+        sleep 90
+
+    - name: Test SSH Connection
+      run: |
+        echo "Testing SSH connection to ${{ env.INSTANCE_IP }}"
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/lightsail.pem ubuntu@${{ env.INSTANCE_IP }} "echo Connected!"
 
     - name: Install Docker and Deploy Docassemble
-      if: success()  # Only run if previous steps succeeded
+      if: success()
       run: |
         echo "Deploying to instance ${{ env.INSTANCE_IP }}"
         ssh -o StrictHostKeyChecking=no -i ~/.ssh/lightsail.pem ubuntu@${{ env.INSTANCE_IP }} '
@@ -127,5 +128,5 @@ jobs:
       run: |
         echo "Deployment completed successfully"
         echo "Instance IP: ${{ env.INSTANCE_IP }}"
-        echo "Instance Name: ${{ env.instance_name }}"
-        echo "Key Pair Name: ${{ env.key_pair_name }}"
+        echo "Instance Name: ${{ env.INSTANCE_NAME }}"
+        echo "Key Pair Name: ${{ env.KEY_PAIR_NAME }}"
