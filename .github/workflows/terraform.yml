@@ -40,12 +40,22 @@ jobs:
         echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}" > ~/.ssh/lightsail.pem
         chmod 600 ~/.ssh/lightsail.pem
 
-    - name: Get Lightsail Instance IP
-      id: get-ip
+    - name: Get and Validate Lightsail Instance IP
+      id: ip
       run: |
-        IP=$(terraform output -raw instance_ip)
-        echo "LIGHTSAIL_IP=$IP" >> $GITHUB_ENV
-        echo "Lightsail IP: $IP"
+        # Get the IP and clean any extra output
+        CLEAN_IP=$(terraform output -raw instance_ip | tr -d '\n')
+
+        # Validate IP format
+        if [[ $CLEAN_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "Valid IP address: ${CLEAN_IP}"
+          echo "LIGHTSAIL_IP=${CLEAN_IP}" >> "$GITHUB_ENV"
+        else
+          echo "Error: Invalid IP address format: ${CLEAN_IP}"
+          echo "Raw terraform output:"
+          terraform output
+          exit 1
+        fi
 
     - name: Wait for Instance Boot
       run: |
