@@ -43,16 +43,20 @@ jobs:
     - name: Get Lightsail Instance Details
       id: instance-details
       run: |
+        # Capture terraform output and print to debug
         INSTANCE_IP=$(terraform output -raw instance_ip)
+        echo "DEBUG: Retrieved instance IP: $INSTANCE_IP"
         echo "INSTANCE_IP=$INSTANCE_IP" >> $GITHUB_ENV
-        echo "IP address extracted successfully: $INSTANCE_IP"
 
         INSTANCE_NAME=$(terraform output -raw instance_name)
+        echo "DEBUG: Retrieved instance name: $INSTANCE_NAME"
         echo "instance_name=$INSTANCE_NAME" >> $GITHUB_ENV
 
         KEY_PAIR_NAME=$(terraform output -raw key_pair_name)
+        echo "DEBUG: Retrieved key pair name: $KEY_PAIR_NAME"
         echo "key_pair_name=$KEY_PAIR_NAME" >> $GITHUB_ENV
 
+        # Add debug output
         echo "----------------------------------------"
         echo "Debug Information:"
         echo "Instance IP: $INSTANCE_IP"
@@ -64,12 +68,18 @@ jobs:
       run: |
         echo "Waiting for instance to complete boot process..."
         echo "Target IP: ${{ env.INSTANCE_IP }}"
-        sleep 90  # Increased wait time to ensure instance is ready
-
-    - name: Test SSH Connection
-      run: |
-        echo "Testing SSH connection to ${{ env.INSTANCE_IP }}"
-        ssh -o StrictHostKeyChecking=no -i ~/.ssh/lightsail.pem ubuntu@${{ env.INSTANCE_IP }} "echo Connected!"
+        # Adding retries for SSH connection
+        RETRIES=5
+        for i in $(seq 1 $RETRIES); do
+          echo "Attempt $i of $RETRIES to connect..."
+          if ssh -o StrictHostKeyChecking=no -i ~/.ssh/lightsail.pem ubuntu@${{ env.INSTANCE_IP }} "echo Connected!"; then
+            echo "SSH connection successful!"
+            break
+          else
+            echo "SSH connection failed. Retrying..."
+            sleep 30  # Wait for 30 seconds before retrying
+          fi
+        done
 
     - name: Install Docker and Deploy Docassemble
       if: success()  # Only run if previous steps succeeded
