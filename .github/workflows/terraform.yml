@@ -40,35 +40,48 @@ jobs:
         echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}" > ~/.ssh/lightsail.pem
         chmod 600 ~/.ssh/lightsail.pem
 
-    - name: Get and Validate Lightsail Instance IP
-      id: ip
+    - name: Get Lightsail Instance Details
+      id: instance-details
       run: |
-        # Get the IP and clean any extra output
-        CLEAN_IP=$(terraform output -raw instance_ip | tr -d '\n')
-
+        # Extract IP address and remove quotes
+        INSTANCE_IP=$(terraform output -raw instance_ip)
         # Validate IP format
-        if [[ $CLEAN_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          echo "Valid IP address: ${CLEAN_IP}"
-          echo "LIGHTSAIL_IP=${CLEAN_IP}" >> "$GITHUB_ENV"
+        if [[ $INSTANCE_IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "INSTANCE_IP=$INSTANCE_IP" >> $GITHUB_ENV
+          echo "IP address is valid: $INSTANCE_IP"
         else
-          echo "Error: Invalid IP address format: ${CLEAN_IP}"
-          echo "Raw terraform output:"
-          terraform output
+          echo "Error: Invalid IP address format: $INSTANCE_IP"
           exit 1
         fi
+
+        # Extract other details for logging
+        INSTANCE_NAME=$(terraform output -raw instance_name)
+        KEY_PAIR_NAME=$(terraform output -raw key_pair_name)
+
+        echo "instance_name=$INSTANCE_NAME" >> $GITHUB_OUTPUT
+        echo "key_pair_name=$KEY_PAIR_NAME" >> $GITHUB_OUTPUT
+
+        # Log the details for debugging
+        echo "Instance IP: $INSTANCE_IP"
+        echo "Instance Name: $INSTANCE_NAME"
+        echo "Key Pair Name: $KEY_PAIR_NAME"
 
     - name: Wait for Instance Boot
       run: |
         echo "Waiting for instance to complete boot process..."
-        sleep 60  # Wait for 60 seconds to ensure instance is ready
+        echo "Target IP: ${{ env.INSTANCE_IP }}"
+        sleep 90  # Increased wait time to ensure instance is ready
 
     - name: Test SSH Connection
       run: |
-        ssh -o StrictHostKeyChecking=no -i ~/.ssh/lightsail.pem ubuntu@${{ env.LIGHTSAIL_IP }} "echo Connected!"
+        echo "Testing SSH connection to ${{ env.INSTANCE_IP }}"
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/lightsail.pem ubuntu@${{ env.INSTANCE_IP }} "echo Connected!"
 
     - name: Install Docker and Deploy Docassemble
+      if: success()  # Only run if previous steps succeeded
       run: |
-        ssh -o StrictHostKeyChecking=no -i ~/.ssh/lightsail.pem ubuntu@${{ env.LIGHTSAIL_IP }} '
+        echo "Deploying to instance ${{ env.INSTANCE_IP }}"
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/lightsail.pem ubuntu@${{ env.INSTANCE_IP }} '
           # Update system packages
           sudo apt update -y
           sudo apt upgrade -y
@@ -95,8 +108,10 @@ jobs:
           sudo docker run -d -p 80:80 --name docassemble sylvia98/docassemble:latest
         '
 
-    - name: Print Instance Information
+    - name: Verify Deployment
+      if: success()
       run: |
-        echo "Instance IP: $(terraform output -raw instance_ip)"
-        echo "Instance Name: $(terraform output -raw instance_name)"
-        echo "Key Pair Name: $(terraform output -raw key_pair_name)"
+        echo "Deployment completed successfully"
+        echo "Instance IP: ${{ env.INSTANCE_IP }}"
+        echo "Instance Name: ${{ steps.instance-details.outputs.instance_name }}"
+        echo "Key Pair Name: ${{ steps.instance-details.outputs.key_pair_name }}"
