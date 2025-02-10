@@ -56,7 +56,6 @@ jobs:
 
     - name: Show Instance IP
       run: |
-        echo "INSTANCE_IP=$INSTANCE_IP" >> $GITHUB_ENV
         if [ -z "${{ env.INSTANCE_IP }}" ]; then
           echo "Failed to retrieve instance IP"
           exit 1
@@ -69,7 +68,7 @@ jobs:
 
         # Test connection with increased verbosity and timeout
         echo "Testing connection to ${{ env.INSTANCE_IP }}"
-        
+
         ssh -v -o StrictHostKeyChecking=no \
             -o ConnectTimeout=60 \
             -o ServerAliveInterval=60 \
