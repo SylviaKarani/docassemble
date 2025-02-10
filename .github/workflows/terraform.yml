@@ -37,23 +37,16 @@ jobs:
         echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}" > ~/.ssh/lightsail.pem
         chmod 600 ~/.ssh/lightsail.pem
 
-    - name: Get Lightsail Instance Details
-      id: instance-details
+    - name: Wait for Instance Boot
       run: |
-        raw_ip=$(terraform output -raw instance_ip)
-        INSTANCE_IP=$raw_ip
-        echo "INSTANCE_IP=$INSTANCE_IP" >> "$GITHUB_ENV"
-
-    - name: Test SSH Connection
-      run: |
-        echo "Testing SSH connection to ${{ env.INSTANCE_IP }}"
-        ssh -o StrictHostKeyChecking=no -i ~/.ssh/lightsail.pem ubuntu@${{ env.INSTANCE_IP }} "echo Connected!"
+        echo "Waiting for instance to complete boot process..."
+        sleep 90  # Adjust sleep time if needed
 
     - name: Install Docker and Deploy Docassemble
-      if: success()
       run: |
-        echo "Deploying to instance ${{ env.INSTANCE_IP }}"
-        ssh -o StrictHostKeyChecking=no -i ~/.ssh/lightsail.pem ubuntu@${{ env.INSTANCE_IP }} '
+        INSTANCE_IP=$(terraform output -raw instance_ip)
+        echo "Deploying to instance $INSTANCE_IP"
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/lightsail.pem ubuntu@$INSTANCE_IP '
           # Update system packages
           sudo apt update -y
           sudo apt upgrade -y
@@ -81,7 +74,7 @@ jobs:
         '
 
     - name: Verify Deployment
-      if: success()
       run: |
         echo "Deployment completed successfully"
-        echo "Instance IP: ${{ env.INSTANCE_IP }}"
+        INSTANCE_IP=$(terraform output -raw instance_ip)
+        echo "Instance IP: $INSTANCE_IP"
