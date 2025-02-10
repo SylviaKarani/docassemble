@@ -54,6 +54,11 @@ jobs:
     - name: Test SSH Connection
       run: |
           INSTANCE_IP=$(terraform output -raw instance_ip)
+
+          ssh-keyscan-connect() {
+            ssh-keyscan -H $1 >> ~/.ssh/known_hosts
+          }
+          ssh-keyscan-connect $INSTANCE_IP
           echo "Testing connection to $INSTANCE_IP"
           ssh -v -o StrictHostKeyChecking=no -i ~/.ssh/lightsail.pem -o ConnectTimeout=30 ubuntu@$INSTANCE_IP echo "Connection successful"
 
