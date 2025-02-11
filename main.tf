@@ -15,7 +15,7 @@ variable "instance_name" {
 }
 
 variable "public_key"{
-  description = "Path to the public key"
+  description = "Public key for the instance"
 }
 
 resource "aws_lightsail_key_pair" "docassemble_key" {
