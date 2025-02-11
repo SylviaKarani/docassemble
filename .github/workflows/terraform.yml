@@ -43,20 +43,22 @@ jobs:
       run: |
         # Test connection with increased verbosity and timeout
         echo "Testing connection to instance..."
+        SSH_KEY_FILE=$(mktemp)
+        echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}" > "$SSH_KEY_FILE"
+        chmod 600 "$SSH_KEY_FILE"
 
         ssh -v -o StrictHostKeyChecking=no \
             -o UserKnownHostsFile=/dev/null \
-            -i <(echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}") \
+            -i "$SSH_KEY_FILE" \
             ubuntu@$(terraform output -raw instance_ip) \
             "echo 'Connection successful'"
 
     - name: Install Docker and Deploy Docassemble
       run: |
-        INSTANCE_IP=$(terraform output -raw instance_ip)
         echo "Deploying to instance $INSTANCE_IP"
         ssh -o StrictHostKeyChecking=no \
             -o UserKnownHostsFile=/dev/null \
-            -i <(echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}") \
+            -i "$SSH_KEY_FILE" \
             ubuntu@$(terraform output -raw instance_ip) << 'EOF'
           # Update system packages
           sudo apt update -y
