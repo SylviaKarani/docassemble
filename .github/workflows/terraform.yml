@@ -34,14 +34,6 @@ jobs:
     - name: Apply Terraform Configuration
       run: terraform apply -var "public_key=${{ secrets.LIGHTSAIL_SSH_PUBLIC_KEY }}" -auto-approve
 
-    - name: Get Instance IP
-      id: get-ip
-      run: |
-        IP=$(terraform output instance_ip)
-        echo "Retrieved IP: $IP"
-        echo "INSTANCE_IP=$IP" >> $GITHUB_ENV
-        echo "instance_ip=$IP" >> $GITHUB_OUTPUT
-
     - name: Wait for Instance Boot
       run: |
         echo "Waiting for instance to complete boot process..."
@@ -49,16 +41,13 @@ jobs:
 
     - name: Test SSH Connection
       run: |
-        # Add host key to known_hosts
-        ssh-keyscan -H ${{ env.INSTANCE_IP }} >> ~/.ssh/known_hosts 2>/dev/null
-
         # Test connection with increased verbosity and timeout
-        echo "Testing connection to ${{ env.INSTANCE_IP }}"
+        echo "Testing connection to instance..."
 
         ssh -v -o StrictHostKeyChecking=no \
             -o UserKnownHostsFile=/dev/null \
             -i <(echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}") \
-            ubuntu@${{ env.INSTANCE_IP }} \
+            ubuntu@$(terraform output -raw instance_ip) \
             "echo 'Connection successful'"
 
     - name: Install Docker and Deploy Docassemble
@@ -68,7 +57,7 @@ jobs:
         ssh -o StrictHostKeyChecking=no \
             -o UserKnownHostsFile=/dev/null \
             -i <(echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}") \
-            ubuntu@${{ env.INSTANCE_IP }} << 'EOF'
+            ubuntu@$(terraform output -raw instance_ip) << 'EOF'
           # Update system packages
           sudo apt update -y
           sudo apt upgrade -y
