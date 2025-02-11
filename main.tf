@@ -32,7 +32,7 @@ resource "aws_lightsail_instance" "docassemble_instance" {
   availability_zone = "eu-central-1a"
   blueprint_id      = "ubuntu_22_04"
   bundle_id         = "nano_2_0"
-  key_pair_name     = local.unique_key_name
+  key_pair_name     = aws_lightsail_key_pair.docassemble_key.name
 
   tags = {
     Name      = local.unique_instance_name
@@ -43,6 +43,8 @@ resource "aws_lightsail_instance" "docassemble_instance" {
   lifecycle {
     create_before_destroy = true
   }
+
+  depends_on = [ aws_lightsail_key_pair.docassemble_key ]
 }
 
 output "instance_ip" {
@@ -52,7 +54,3 @@ output "instance_ip" {
 output "instance_name" {
   value = aws_lightsail_instance.docassemble_instance.name
 }
-
-# output "key_pair_name" {
-#   value = aws_lightsail_key_pair.docassemble_key.name
-# }
