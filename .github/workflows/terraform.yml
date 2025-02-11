@@ -1,5 +1,9 @@
 name: Deploy Docassemble to AWS Lightsail
 
+env:
+  ACTIONS_RUNNER_DEBUG: true
+  ACTIONS_STEP_DEBUG: true
+  
 on:
   push:
     branches:
@@ -44,6 +48,7 @@ jobs:
         # Test connection with increased verbosity and timeout
         echo "Testing connection to instance..."
         SSH_KEY_FILE=$(mktemp)
+        echo "Debug: SSH key file created at $SSH_KEY_FILE"
         echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}" > "$SSH_KEY_FILE"
         chmod 600 "$SSH_KEY_FILE"
 
