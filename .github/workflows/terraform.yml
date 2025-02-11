@@ -37,10 +37,10 @@ jobs:
     - name: Get Instance IP
       id: get-ip
       run: |
-        IP=$(terraform output -raw instance_ip)
+        IP=$(terraform output instance_ip)
         echo "Retrieved IP: $IP"
-        echo "INSTANCE_IP=$IP" >> "$GITHUB_ENV"
-        echo "instance_ip=$IP" >> "$GITHUB_OUTPUT"
+        echo "INSTANCE_IP=$IP" >> $GITHUB_ENV
+        echo "instance_ip=$IP" >> $GITHUB_OUTPUT
 
     - name: Wait for Instance Boot
       run: |
