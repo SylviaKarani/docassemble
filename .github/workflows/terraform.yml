@@ -26,40 +26,26 @@ jobs:
         aws-region: 'eu-central-1'
 
     - name: Initialize Terraform
+      env:
+        LIGHTSAIL_SSH_PUBLIC_KEY: ${{ secrets.LIGHTSAIL_SSH_PUBLIC_KEY }}
+
       run: terraform init
 
     - name: Apply Terraform Configuration
-      run: terraform apply -auto-approve
+      run: terraform apply -var "public_key=${{ secrets.LIGHTSAIL_SSH_PUBLIC_KEY }}" -auto-approve
 
-    - name: Setup SSH for Lightsail
+    - name: Get Instance IP
+      id: get-ip
       run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}" > ~/.ssh/lightsail.pem
-        chmod 600 ~/.ssh/lightsail.pem
-        touch ~/.ssh/known_hosts
+        IP=$(terraform output -raw instance_ip)
+        echo "Retrieved IP: $IP"
+        echo "INSTANCE_IP=$IP" >> "$GITHUB_ENV"
+        echo "instance_ip=$IP" >> "$GITHUB_OUTPUT"
 
     - name: Wait for Instance Boot
       run: |
         echo "Waiting for instance to complete boot process..."
         sleep 90  # Adjust sleep time if needed
-
-    - name: Get Instance IP
-      id: get-ip
-      run: |
-        # Store the output in a variable first
-        IP=$(terraform output -raw instance_ip)
-        echo "Retrieved IP: $IP"
-        # Set the environment variable for subsequent steps using the new syntax
-        echo "INSTANCE_IP=$IP" >> "$GITHUB_ENV"
-        # Also set the output (optional, for debugging)
-        echo "instance_ip=$IP" >> "$GITHUB_OUTPUT"
-
-    - name: Show Instance IP
-      run: |
-        if [ -z "${{ env.INSTANCE_IP }}" ]; then
-          echo "Failed to retrieve instance IP"
-          exit 1
-        fi
 
     - name: Test SSH Connection
       run: |
@@ -70,9 +56,8 @@ jobs:
         echo "Testing connection to ${{ env.INSTANCE_IP }}"
 
         ssh -v -o StrictHostKeyChecking=no \
-            -o ConnectTimeout=60 \
-            -o ServerAliveInterval=60 \
-            -i ~/.ssh/lightsail.pem \
+            -o UserKnownHostsFile=/dev/null \
+            -i <(echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}") \
             ubuntu@${{ env.INSTANCE_IP }} \
             "echo 'Connection successful'"
 
@@ -81,8 +66,8 @@ jobs:
         INSTANCE_IP=$(terraform output -raw instance_ip)
         echo "Deploying to instance $INSTANCE_IP"
         ssh -o StrictHostKeyChecking=no \
-            -o ConnectTimeout=60 \
-            -i ~/.ssh/lightsail.pem \
+            -o UserKnownHostsFile=/dev/null \
+            -i <(echo "${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}") \
             ubuntu@${{ env.INSTANCE_IP }} << 'EOF'
           # Update system packages
           sudo apt update -y

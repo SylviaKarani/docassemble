@@ -14,9 +14,13 @@ variable "instance_name" {
   default     = "docassemble-instance"
 }
 
+variable "public_key"{
+  description = "Path to the public key"
+}
+
 resource "aws_lightsail_key_pair" "docassemble_key" {
   name       = local.unique_key_name
-  public_key = file("${path.module}/lightsail.pub")  # This will use the public key in your repo
+  public_key = var.public_key
 
   lifecycle {
     create_before_destroy = true
